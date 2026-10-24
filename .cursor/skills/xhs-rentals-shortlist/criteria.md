@@ -9,6 +9,7 @@
   "city": "深圳",
   "zones_ok": ["前海", "桂湾", "大新"],
   "zones_bad": ["海纳公馆", "赤湾"],
+  "rent_mode": "整租",
   "rooms": "三房两卫",
   "area_min_sqm": 90,
   "budget_prefer_max": 12000,
@@ -19,9 +20,12 @@
   "furnished": "required",
   "decor_style": "现代简约/轻奢",
   "owner_only": false,
-  "extra": []
+  "extra": [],
+  "feedback": []
 }
 ```
+
+`rent_mode`：`整租` | `合租` | `均可`。用户未说清时必须先问。
 
 缺必填项 → 回到 SKILL 步骤 0，先问用户。
 
@@ -50,7 +54,13 @@ FURNISHED = re.compile(r"(家私|家电|全齐|拎包|家具齐全)")
 EMPTY = re.compile(r"(空房|硬装交付|毛坯|无家具)")
 OWNER = re.compile(r"(业主直租|房东直租|个人出租|免中介)")
 AGENT = re.compile(r"(中介|经纪|置业顾问)")
+WHOLE = re.compile(r"(整租|整套出租|整层)")
+SHARED = re.compile(r"(合租|转租单间|出租一间|主卧出租|次卧出租|床位|室友|找室友)")
 ```
+
+**整租**：命中 `SHARED` 且无「整套/整租」语境 → 剔除；关键词带「整租」。  
+**合租**：保留单间/主卧帖；整套大三房可降权。  
+**均可**：不因整合租剔除，可作标签展示。
 
 **预算**：从文案解析 `(\d{4,5})\s*元?/?月`、`(\d(?:\.\d)?)\s*万`、`(\d{1,2})\s*[kK]`。  
 `price >= budget_hard_drop` → 剔除；`price <= budget_prefer_max` → 加分。  
@@ -65,6 +75,8 @@ AGENT = re.compile(r"(中介|经纪|置业顾问)")
 | 发布在 `--days` 内且越新 | +1～3 |
 | 命中 ZONE_OK | +2 |
 | 命中 ROOM / 面积 | +1～2 |
+| 要整租且命中 WHOLE | +1 |
+| 要整租且命中 SHARED | 剔除 |
 | ORIENT_OK（若用户要求） | +2 |
 | 楼龄符合（若要求） | +2 |
 | 家具符合 furnished | +1 |
@@ -77,9 +89,10 @@ AGENT = re.compile(r"(中介|经纪|置业顾问)")
 
 ## 4. 搜索关键词
 
-由 `city` + `zones_ok` + 房型词组合 6～15 个，例如：
+由 `city` + `zones_ok` + `rent_mode` + 房型词组合 6～15 个，例如：
 
-- `"{zone} 租房 {room}"`
+- `"{zone} 整租 {room}"`（要整租时）
+- `"{zone} 合租 主卧"`（要合租时）
 - `"{city}{zone} {room} 出租"`
 - `"{metro_station} 租房 {room}"`（用户若提了地铁站）
 
